@@ -1,0 +1,51 @@
+# Dockerfile.devcontainer
+# Extends the base Redmine dev image with IDE/developer tooling.
+# Used ONLY by .devcontainer/ — never for CI, tests, or production.
+#
+# Adds:
+#   - nvm + Node.js LTS + pnpm  (for e2e, theme tooling, npm scripts)
+#   - solargraph + rubocop       (Ruby IDE support — language server, linting)
+
+FROM redmine-dev:6.1.1
+
+USER root
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    git \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+# ── Node.js via nvm ────────────────────────────────────────────────────────
+# Installed as the redmine user so nvm lives in /home/redmine/.nvm.
+# Symlinks are then created in /usr/local/bin so node/npm/npx/pnpm are
+# available in non-interactive shells (postCreateCommand, VS Code tasks, etc.).
+
+USER redmine
+ENV NVM_DIR=/home/redmine/.nvm \
+    HOME=/home/redmine
+
+RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash && \
+    . "$NVM_DIR/nvm.sh" && \
+    nvm install --lts && \
+    nvm alias default node && \
+    npm install -g pnpm && \
+    # Capture the node bin directory so the next RUN (as root) can symlink it
+    dirname "$(nvm which default)" > /tmp/node-bin-path
+
+USER root
+RUN NODE_BIN=$(cat /tmp/node-bin-path) && \
+    ln -sf "$NODE_BIN/node"  /usr/local/bin/node  && \
+    ln -sf "$NODE_BIN/npm"   /usr/local/bin/npm   && \
+    ln -sf "$NODE_BIN/npx"   /usr/local/bin/npx   && \
+    ln -sf "$NODE_BIN/pnpm"  /usr/local/bin/pnpm  && \
+    rm /tmp/node-bin-path
+
+# ── Ruby dev tools ─────────────────────────────────────────────────────────
+# Installed as system gems (not user gems) so Solargraph LSP and RuboCop are
+# available without requiring `bundle exec` — VS Code Ruby LSP discovers them
+# automatically via the system gem path.
+
+RUN gem install solargraph rubocop rubocop-rails rubocop-performance rubocop-ast --no-document
+
+USER redmine

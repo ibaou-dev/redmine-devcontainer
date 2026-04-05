@@ -1,0 +1,22 @@
+# Canonical Redmine source reference (local-only). Initialize with: make references
+.references/
+vendor/bundle/
+.bundle/
+node_modules/
+e2e/node_modules/
+e2e/test-results/
+e2e/playwright-report/
+e2e/.env
+*.log
+.DS_Store
+.env
+db-data/
+postgres-data/
+# All tmp/ content is local-only. tmp/redmine-source is superseded by .references/redmine
+tmp/
+# Git worktrees placed inside the repo dir (non-standard; standard is sibling dirs)
+worktrees/
+.image-analysis
+.screenshots
+# Local CLI config (may contain API keys)
+.red/

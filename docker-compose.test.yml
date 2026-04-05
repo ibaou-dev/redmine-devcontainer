@@ -1,0 +1,74 @@
+# docker-compose.test.yml
+# Standalone ephemeral environment for tests, CI, and DevContainers.
+#
+# Usage:
+#   docker compose -f docker-compose.test.yml up -d
+#
+# Or via Makefile:
+#   make start-test
+#
+# Postgres data is RAM-backed (tmpfs) — lost on container stop. No named volumes.
+# Test Redmine port: TEST_REDMINE_PORT in .env (default: 4001).
+
+services:
+  redmine:
+    build: .
+    image: redmine-dev:6.1.1
+    ports:
+      - "${TEST_REDMINE_PORT:-4001}:3000"
+    environment:
+      - RAILS_ENV=development
+      - RAILS_ASSETS_DEBUG=false
+      - REDMINE_DB_POSTGRES=postgres
+      - REDMINE_DB_USERNAME=redmine
+      - REDMINE_DB_PASSWORD=${POSTGRES_PASSWORD:-password}
+      - REDMINE_SECRET_KEY_BASE=${REDMINE_SECRET_KEY_BASE:-test_secret_key_base}
+    volumes:
+      - ./plugins:/usr/src/redmine/plugins
+      - ./themes:/usr/src/redmine/themes
+      - ./config/additional_environment.rb:/usr/src/redmine/config/additional_environment.rb
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - test-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          cpus: '1.5'
+          memory: 1536M
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+  postgres:
+    image: postgres:14
+    environment:
+      POSTGRES_DB: redmine
+      POSTGRES_USER: redmine
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+    tmpfs:
+      - /var/lib/postgresql/data
+    networks:
+      - test-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U redmine -d redmine"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+
+networks:
+  test-net:
+    driver: bridge

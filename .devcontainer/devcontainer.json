@@ -1,0 +1,89 @@
+// .devcontainer/devcontainer.json
+// DevContainer specification for Redmine plugin/theme development.
+//
+// Stack: docker-compose.test.yml (ephemeral postgres, no Traefik) + devcontainer overlay.
+// Redmine is available at http://localhost:${TEST_REDMINE_PORT} after postCreateCommand runs.
+// Default TEST_REDMINE_PORT=4001 (main workspace), worktrees use their own port from .env.
+//
+// Ephemeral postgres (tmpfs) is intentional — each worktree/agent gets a clean slate.
+// Base Redmine migrations run via the entrypoint on first container start.
+// postCreateCommand waits for Redmine readiness, then runs plugin migrations + seed only.
+{
+  "name": "Redmine Development",
+
+  // Test compose gives us ephemeral tmpfs postgres (no named volumes) and no Traefik
+  // dependency — correct for worktree/agentic-team use where each instance is isolated.
+  // devcontainer overlay builds from Dockerfile.devcontainer and mounts /workspace.
+  "dockerComposeFile": [
+    "../docker-compose.test.yml",
+    "../docker-compose.devcontainer.yml"
+  ],
+  "service": "redmine",
+
+  // /workspace is mounted by docker-compose.devcontainer.yml
+  "workspaceFolder": "/workspace",
+
+  // Forward Redmine (container port 3000) and PostgreSQL (5432) to the host.
+  // Using the container port (3000) rather than a fixed host port means this works
+  // correctly across worktrees — each worktree's compose binds a different host port
+  // (TEST_REDMINE_PORT=4001/4011/etc), and VS Code auto-labels via portsAttributes.
+  "forwardPorts": [3000, 5432],
+  "portsAttributes": {
+    "3000": {
+      "label": "Redmine",
+      "onAutoForward": "notify"
+    },
+    "5432": {
+      "label": "PostgreSQL",
+      "onAutoForward": "silent"
+    }
+  },
+
+  // Waits for Redmine HTTP readiness (entrypoint runs ~60 base migrations on fresh tmpfs
+  // postgres), then runs plugin migrations + seed. Avoids concurrent rake OOM.
+  "postCreateCommand": "bash /workspace/scripts/devcontainer-init.sh",
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        // Ruby — Shopify Ruby LSP is the current standard; Solargraph for hover docs
+        "Shopify.ruby-lsp",
+        "castwide.solargraph",
+        // Docker
+        "ms-azuretools.vscode-docker",
+        // Testing
+        "ms-playwright.playwright",
+        // Frontend
+        "esbenp.prettier-vscode",
+        "dbaeumer.vscode-eslint",
+        // Utilities
+        "eamodio.gitlens",
+        "EditorConfig.EditorConfig"
+      ],
+      "settings": {
+        // Ruby LSP handles formatting, linting, go-to-definition
+        "[ruby]": {
+          "editor.formatOnSave": true,
+          "editor.defaultFormatter": "Shopify.ruby-lsp",
+          "editor.tabSize": 2,
+          "editor.insertSpaces": true
+        },
+        "editor.rulers": [120],
+        "editor.renderWhitespace": "boundary",
+        "files.trimTrailingWhitespace": true,
+        "files.insertFinalNewline": true,
+        "files.watcherExclude": {
+          "**/.references/**": true,
+          "**/tmp/**": true,
+          "**/e2e/node_modules/**": true,
+          "**/e2e/test-results/**": true,
+          "**/e2e/playwright-report/**": true
+        },
+        "search.exclude": {
+          "**/.references/**": true,
+          "**/e2e/node_modules/**": true
+        }
+      }
+    }
+  }
+}

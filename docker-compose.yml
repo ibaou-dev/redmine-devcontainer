@@ -1,0 +1,75 @@
+services:
+  redmine:
+    build: .
+    # Note: 'image' name here acts as a tag for your custom build
+    image: redmine-dev:6.1.1 
+    ports:
+      - "${REDMINE_PORT:-4000}:3000"
+    environment:
+      - RAILS_ENV=development
+      - RAILS_ASSETS_DEBUG=true
+      - REDMINE_DB_POSTGRES=postgres
+      - REDMINE_DB_USERNAME=redmine
+      - REDMINE_DB_PASSWORD=password
+      - REDMINE_SECRET_KEY_BASE=development_secret_key_base
+    volumes:
+      - ./plugins:/usr/src/redmine/plugins
+      - ./themes:/usr/src/redmine/themes
+      - ./config/additional_environment.rb:/usr/src/redmine/config/additional_environment.rb
+      - redmine-repos:/usr/src/redmine/repos
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      devlocal-net:
+      proxy:
+    labels:
+      # --- Base Traefik setup ---
+      - "traefik.enable=true"
+      - "traefik.docker.network=proxy"
+      # --- Gitea ---
+      - "traefik.http.services.redmine.loadbalancer.server.port=3000"
+      - "traefik.http.routers.redmine.service=redmine"
+      - "traefik.http.routers.redmine.rule=Host(`redmine.int.sumsol.gr`)"
+      - "traefik.http.routers.redmine.entrypoints=websecure"
+      - "traefik.http.routers.redmine.tls=true"
+      - "traefik.http.routers.redmine.tls.certresolver=cloudflare"
+
+  repo-sync:
+    image: alpine:latest
+    volumes:
+      - redmine-repos:/repos
+      - ./scripts:/scripts:ro
+    entrypoint: >
+      /bin/sh -c "
+      apk add --no-cache git curl &&
+      cp /scripts/crontab /etc/crontabs/root &&
+      crond -f -l 2
+      "
+    depends_on:
+      - redmine
+    restart: unless-stopped
+    networks:
+      devlocal-net:
+
+  postgres:
+    image: postgres:14
+    environment:
+      POSTGRES_DB: redmine
+      POSTGRES_USER: redmine
+      POSTGRES_PASSWORD: password
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    restart: unless-stopped
+    networks:
+      devlocal-net:
+
+volumes:
+  postgres-data:
+  redmine-repos:
+
+networks:
+  devlocal-net:
+    external: true
+  proxy:
+    external: true 
