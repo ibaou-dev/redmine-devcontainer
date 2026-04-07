@@ -24,3 +24,4 @@ worktrees/
 .agents/notes/
 # Ruby LSP cache
 .ruby-lsp/
+

@@ -8,6 +8,7 @@ This is a Redmine plugin/theme development template. See the links below for key
 - `CONTRIBUTING.md` — branch naming, commit conventions, PR workflow
 - `.agents/skills/` — domain-specific AI skills (auto-trigger based on context)
 - `.env.example` → `.env` — environment configuration (ports, version, passwords)
+- `.claude/settings.local.json.example` → `.claude/settings.local.json` — Claude Code settings (created by `make setup`)
 
 ## Quick Context
 

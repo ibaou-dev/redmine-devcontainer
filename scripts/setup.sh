@@ -58,6 +58,12 @@ else
   echo ".env already exists — skipping (delete it to reset)"
 fi
 
+# ── 2b. Bootstrap .claude/settings.local.json ────────────────────────────────
+if [ ! -f .claude/settings.local.json ]; then
+  cp .claude/settings.local.json.example .claude/settings.local.json
+  echo "Created .claude/settings.local.json from example"
+fi
+
 # Load .env for use in this script
 set -a
 # shellcheck disable=SC1091
