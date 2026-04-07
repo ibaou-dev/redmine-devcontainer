@@ -18,5 +18,9 @@ tmp/
 worktrees/
 .image-analysis
 .screenshots
-# Local CLI config (may contain API keys)
+# Local Redmine CLI config (may contain API keys)
 .red/
+# Agent notes (may contain credentials, never commit)
+.agents/notes/
+# Ruby LSP cache
+.ruby-lsp/

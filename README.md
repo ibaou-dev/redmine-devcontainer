@@ -1,6 +1,6 @@
 # Redmine Development Environment
 
-A self-contained, self-installing template for Redmine 6.x plugin and theme development.
+A self-contained template for Redmine plugin and theme development.
 Clone it, run `make setup`, and have a fully working Redmine instance in minutes.
 
 ---
@@ -12,7 +12,8 @@ Clone it, run `make setup`, and have a fully working Redmine instance in minutes
 | Docker | 24.0+ | With Docker Compose v2 (`docker compose` subcommand) |
 | Git | 2.30+ | Git worktree support required |
 | Make | 3.81+ | GNU make |
-| Node.js | 18+ | For Playwright e2e tests |
+
+> Node.js 18+ is only required if you add Playwright e2e tests to `e2e/`.
 
 ---
 
@@ -20,12 +21,12 @@ Clone it, run `make setup`, and have a fully working Redmine instance in minutes
 
 ```bash
 # 1. Clone (or use this as a GitHub template)
-git clone <your-repo-url> redmine-development
-cd redmine-development
+git clone <your-repo-url> my-redmine-dev
+cd my-redmine-dev
 
 # 2. Configure environment
 cp .env.example .env
-# Edit .env to set your COMPOSE_PROJECT_NAME and ports if needed
+# Edit .env — at minimum change POSTGRES_PASSWORD and REDMINE_SECRET_KEY_BASE
 
 # 3. One-command setup
 make setup
@@ -40,23 +41,27 @@ make setup
 
 Redmine is then available at **http://localhost:4000** (or `REDMINE_PORT` from `.env`).
 
-> Credentials: see `.agents/notes/login_credentials.md`
+> **Default credentials:** `admin` / `admin`  
+> Redmine will prompt you to change the password on first login.
+
+> **Security:** The defaults in `.env.example` are for local development only.
+> Always change `POSTGRES_PASSWORD` and `REDMINE_SECRET_KEY_BASE` before
+> exposing this environment to any network.
 
 ---
 
 ## Project Structure
 
 ```
-redmine-development/
-├── plugins/                    # Redmine plugins (bind-mounted into container)
-│   └── redmine_pipeline_tracker/           # Example: CI/CD integration plugin
-├── themes/                     # Redmine themes (bind-mounted into container)
-│   └── ibaou-modern/         # Example: modern JIRA-inspired theme
+redmine-devcontainer/
+├── plugins/                    # Your Redmine plugins (bind-mounted into container)
+├── themes/                     # Your Redmine themes (bind-mounted into container)
 ├── config/
 │   └── additional_environment.rb  # Rails host allowlist
-├── e2e/                        # Playwright end-to-end tests
 ├── scripts/
 │   ├── setup.sh                # Full onboarding script (called by make setup)
+│   ├── scaffold-plugin.sh      # Interactive plugin scaffolder
+│   ├── scaffold-theme.sh       # Interactive theme scaffolder
 │   ├── init-references.sh      # Clone Redmine source into .references/
 │   ├── new-worktree.sh         # Create isolated git worktree
 │   └── wait-healthy.sh         # Poll until Redmine responds
@@ -67,9 +72,8 @@ redmine-development/
 │       ├── redmine-cli/                # Redmine REST API CLI
 │       ├── skill-creator/              # Create/improve agent skills
 │       ├── git-workflow/               # Git conventions
-│       ├── docker-expert/              # Docker expertise
-│       ├── beads/                      # Task management
-│       └── opencode-agent-creator/     # OpenCode agent creation
+│       ├── git-conventional-commits/   # Conventional commit messages
+│       └── docker-expert/              # Docker expertise
 ├── docker-compose.yml          # Base compose (Traefik-enabled)
 ├── docker-compose.local.yml    # Local override (no Traefik, adds resource limits)
 ├── docker-compose.test.yml     # Standalone ephemeral environment (CI/DevContainers)
@@ -77,7 +81,7 @@ redmine-development/
 │   └── devcontainer.json       # VS Code DevContainer specification
 ├── .env.example                # Environment variable template
 ├── Makefile                    # Developer workflow commands
-├── Dockerfile                  # Custom redmine:6.1.1 image
+├── Dockerfile                  # Custom Redmine image (version from REDMINE_VERSION)
 └── AGENTS.md                   # AI agent development guidelines
 ```
 
@@ -87,13 +91,15 @@ redmine-development/
 
 ### Plugin Development
 
-Edit files in `plugins/<your_plugin>/` — changes reflect immediately (bind-mounted).
+Drop your plugin directory into `plugins/` — it is bind-mounted and changes reflect
+immediately (no restart for view/asset changes).
 
 ```bash
-make shell   # Open a shell in the running container
-make migrate # Run migrations after adding db/migrate/ files
-make logs    # Tail Redmine logs
-make restart # Restart Redmine service after config changes
+make scaffold-plugin    # Scaffold a new plugin interactively
+make shell              # Open a shell in the running container
+make migrate            # Run migrations after adding db/migrate/ files
+make logs               # Tail Redmine logs
+make restart            # Restart Redmine service after config/Ruby changes
 ```
 
 The AI skill `redmine-plugin-developer` (in `.agents/skills/`) provides expert guidance
@@ -102,18 +108,20 @@ testing, and i18n. It auto-triggers when you work in `plugins/`.
 
 ### Theme Development
 
-Edit files in `themes/<your_theme>/` — changes reflect immediately (bind-mounted).
+Drop your theme directory into `themes/` — changes reflect immediately after a browser
+hard-refresh (Ctrl+Shift+R).
 
-CSS and JS are served directly by Propshaft (no compilation). Hard-refresh your browser
-after changes.
+```bash
+make scaffold-theme     # Scaffold a new theme interactively
+```
+
+CSS and JS are served directly by Propshaft (no compilation step needed).
 
 The AI skill `redmine-theme-developer` auto-triggers when you work in `themes/`.
 
 ---
 
 ## Docker Compose Modes
-
-Three compose configurations are available:
 
 ### Local Mode (default — no Traefik required)
 
@@ -126,7 +134,7 @@ make restart      # Restart Redmine only
 Combines `docker-compose.yml` + `docker-compose.local.yml`. Both networks become local
 (no external Traefik required). Access at `http://localhost:${REDMINE_PORT:-4000}`.
 
-Resource limits: Redmine 2 CPU / 2 GB, PostgreSQL 1 CPU / 1 GB.
+Resource limits: Redmine 2 CPU / 3 GB, PostgreSQL 1 CPU / 1 GB.
 
 ### Traefik Mode (for users with a Traefik proxy)
 
@@ -148,8 +156,6 @@ make test         # Start, wait, run Playwright tests, stop
 Uses `docker-compose.test.yml` (standalone). PostgreSQL data is RAM-backed (`tmpfs`) —
 fully ephemeral, zero state between runs. Test Redmine on port `${TEST_REDMINE_PORT:-4001}`.
 
-Resource limits: Redmine 1.5 CPU / 1.5 GB, PostgreSQL 0.5 CPU / 512 MB.
-
 ---
 
 ## Git Worktrees (Parallel Development)
@@ -161,7 +167,6 @@ Work on multiple branches simultaneously with isolated Docker stacks:
 make worktree BRANCH=feature/my-new-feature PORT=4010
 
 # The worktree gets its own .env with unique COMPOSE_PROJECT_NAME
-# cd to it and start independently:
 cd ../redmine-feature-my-new-feature
 make start   # runs on port 4010, isolated from other stacks
 ```
@@ -171,15 +176,44 @@ container, network, and volume names — complete isolation with no port conflic
 
 ---
 
-## E2E Tests
+## Scaffolding
+
+Quickly generate a new plugin or theme skeleton:
 
 ```bash
-make test         # Start test env + run all Playwright tests
-make start-test   # Start test env only (for manual testing)
+make scaffold-plugin    # Prompts for name, author, description
+make scaffold-theme     # Prompts for name and options
 ```
 
-Tests live in `e2e/`. Playwright configuration: `e2e/playwright.config.ts`.
-Test environment URL: `http://localhost:${TEST_REDMINE_PORT:-4001}`.
+Or call the scripts directly for non-interactive use:
+
+```bash
+bash scripts/scaffold-plugin.sh redmine_my_plugin
+bash scripts/scaffold-theme.sh my-theme
+```
+
+The AI skills `redmine-plugin-developer` and `redmine-theme-developer` can also scaffold
+interactively — just describe what you want to build and the AI will guide you through it.
+
+---
+
+## E2E Tests
+
+To add end-to-end tests, create an `e2e/` directory with Playwright:
+
+```bash
+mkdir e2e && cd e2e
+npm init playwright@latest
+```
+
+Then use:
+```bash
+make test         # Start test env + run all Playwright tests
+make start-test   # Start test environment only (for manual testing)
+```
+
+See `e2e/playwright.config.ts` for configuration. The test URL is
+`http://localhost:${TEST_REDMINE_PORT:-4001}`.
 
 ---
 
@@ -201,7 +235,7 @@ AI skills use this to find base stylesheets, available hooks, fixture files, and
 
 Open this repository in VS Code and select **"Reopen in Container"**. The DevContainer:
 - Uses `docker-compose.test.yml` (ephemeral, no Traefik)
-- Forwards port 4001 (Redmine) and 5432 (PostgreSQL)
+- Forwards port 3000 (Redmine) and 5432 (PostgreSQL)
 - Installs Ruby LSP, Solargraph, Playwright extensions
 - Runs migrations and seeds on first start
 
@@ -217,11 +251,10 @@ expertise. They auto-trigger based on context in Claude Code and OpenCode.
 | `redmine-plugin-developer` | Files in `plugins/`, `init.rb`, hooks, migrations |
 | `redmine-theme-developer` | Files in `themes/`, CSS, `theme.js` |
 | `redmine-cli` | Redmine API, issue management, `.red/config.json` |
-| `skill-creator` | Creating/improving agent skills |
+| `git-conventional-commits` | Commit messages, changelog |
 | `git-workflow` | Git commits, branching, CONTRIBUTING.md |
 | `docker-expert` | Dockerfiles, compose files, container issues |
-| `beads` | Task/issue tracking |
-| `opencode-agent-creator` | Creating OpenCode agents |
+| `skill-creator` | Creating/improving agent skills |
 
 ---
 
@@ -241,7 +274,8 @@ All configuration is via `.env` (copy from `.env.example`):
 | `COMPOSE_PROJECT_NAME` | `redmine-dev` | Docker project prefix (unique per worktree) |
 | `REDMINE_PORT` | `4000` | Local dev Redmine port |
 | `TEST_REDMINE_PORT` | `4001` | Test/CI/DevContainer Redmine port |
-| `TRAEFIK_HOST` | `redmine.int.sumsol.gr` | Hostname for Traefik routing |
-| `POSTGRES_PASSWORD` | `password` | PostgreSQL password |
-| `REDMINE_SECRET_KEY_BASE` | `development_secret_key_base` | Rails secret |
-| `REDMINE_VERSION` | `6.1.1` | Redmine version for `make references` |
+| `TRAEFIK_HOST` | `redmine.localhost` | Hostname for Traefik routing |
+| `POSTGRES_PASSWORD` | _(change me)_ | PostgreSQL password |
+| `REDMINE_SECRET_KEY_BASE` | _(change me)_ | Rails secret key base |
+| `REDMINE_VERSION` | `6.1.1` | Redmine image tag and source reference version |
+| `REDMINE_API_KEY` | _(unset)_ | Redmine system API key for repo-sync (optional) |

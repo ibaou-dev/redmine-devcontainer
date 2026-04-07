@@ -1,0 +1,374 @@
+[
+  {
+    "id": 1,
+    "name": "type-discrimination-refactor-vs-feat",
+    "description": "Renaming + extracting a function is refactor, not feat — model defaults to feat",
+    "prompt": "I staged changes in my git repo. Here's what happened: I renamed the function `getUser` to `checkAuth` in auth/handler.go, extracted its token-validation logic into a new private function `verifyToken`, and updated all call sites in three other files. No new capability was added — it's the same behavior, just restructured. Write a conventional commit message for these staged changes. The scope should be 'auth'.",
+    "trap": "Model sees a new function name and new private function, defaults to feat(auth) because it sees 'new' functionality, missing that no user-facing capability was added",
+    "assertions": [
+      {
+        "id": "1.1",
+        "text": "The commit type is exactly 'refactor' — the first line starts with 'refactor'",
+        "grading": { "method": "regex", "target": "first_line", "pattern": "(?i)^refactor" }
+      },
+      {
+        "id": "1.2",
+        "text": "The description uses imperative mood — starts with a verb like 'extract', 'rename', 'restructure', 'move', not 'extracted', 'renamed', 'restructured'",
+        "grading": { "method": "regex", "target": "first_line", "pattern": "(?i)^[a-z]+(?:\\([^)]+\\))?!?:\\s*(extract|rename|restructure|move|refactor|update|replace|change|split|break|reorganize)\\b" }
+      },
+      {
+        "id": "1.3",
+        "text": "The description does NOT contain the word 'add' or 'adds' (which would imply new functionality)",
+        "grading": { "method": "regex", "target": "first_line", "pattern": "(?i)\\badd(s)?\\b", "negate": true }
+      },
+      {
+        "id": "1.4",
+        "text": "The scope is 'auth' — the first line contains '(auth)'",
+        "grading": { "method": "regex", "target": "first_line", "pattern": "\\(auth\\)" }
+      },
+      {
+        "id": "1.5",
+        "text": "The first line (type + scope + description) is 72 characters or fewer",
+        "grading": { "method": "regex", "target": "first_line", "pattern": "^.{0,72}$" }
+      }
+    ]
+  },
+  {
+    "id": 2,
+    "name": "breaking-change-footer-required",
+    "description": "Removing a deprecated API endpoint is a breaking change — model silently uses chore",
+    "prompt": "I removed the deprecated `/api/v1/auth` endpoint from our Express server. This endpoint was marked deprecated 6 months ago and the replacement `/api/v2/auth` has been available since then. I staged the deletion of the v1 route handler and its tests. Write a conventional commit message for this change.",
+    "trap": "Model writes chore: silently without BREAKING CHANGE footer — because it's a 'cleanup' of deprecated code",
+    "assertions": [
+      {
+        "id": "2.1",
+        "text": "The commit message contains a 'BREAKING CHANGE:' footer (exact uppercase string)",
+        "grading": { "method": "regex", "target": "commit", "pattern": "BREAKING CHANGE:" }
+      },
+      {
+        "id": "2.2",
+        "text": "The BREAKING CHANGE footer or body mentions a migration path — references '/api/v2/auth' or 'v2' as the replacement",
+        "grading": { "method": "regex", "target": "response", "pattern": "(?i)/api/v2/auth|v2.*auth|auth.*v2" }
+      },
+      {
+        "id": "2.3",
+        "text": "The commit type is NOT 'chore' — does not start with 'chore'",
+        "grading": { "method": "regex", "target": "first_line", "pattern": "(?i)^chore", "negate": true }
+      },
+      {
+        "id": "2.4",
+        "text": "A body is present (blank line after subject, then body text) — the commit has more than just the subject line",
+        "grading": { "method": "regex", "target": "commit", "pattern": "\\n\\s*\\n" }
+      },
+      {
+        "id": "2.5",
+        "text": "The commit uses either the '!' suffix after type/scope OR has the BREAKING CHANGE footer (one or both signals present)",
+        "grading": { "method": "regex", "any": [
+          { "target": "first_line", "pattern": "!" },
+          { "target": "commit", "pattern": "BREAKING CHANGE:" }
+        ]}
+      }
+    ]
+  },
+  {
+    "id": 3,
+    "name": "contributing-md-non-standard-closing-keyword",
+    "description": "CONTRIBUTING.md specifies 'Addressed #N' (non-standard keyword) — model uses standard 'Fixes' or 'Closes' without reading the file",
+    "prompt": "I fixed a null pointer dereference in the payment processing module. The fix adds a guard clause before dereferencing the transaction object. The issue number is 512. Note: this project has a CONTRIBUTING.md in the repo root.",
+    "trap": "Without reading the project's CONTRIBUTING.md, the model defaults to standard keywords 'Fixes #512' or 'Closes #512'. The CONTRIBUTING.md requires the non-standard keyword 'Addressed #N', so the without-skill agent uses the wrong keyword while the with-skill agent reads the file and uses 'Addressed #512'.",
+    "skill_context": "# Contributing\n\nWe use GitHub for issue tracking. When your commit resolves an issue, include a footer using our project-specific keyword:\n\n```\nAddressed #<issue-number>\n```\n\nDo NOT use 'Fixes', 'Closes', or 'Resolves' — our issue bot only recognizes 'Addressed'.\n\nThe scope for payment processing changes is 'payments'.",
+    "context_label": "CONTRIBUTING.md (found at repo root)",
+    "assertions": [
+      {
+        "id": "3.1",
+        "text": "The footer line contains 'Addressed #512' — the exact string 'Addressed #512' appears on its own line",
+        "grading": { "method": "regex", "target": "commit", "pattern": "(?m)^\\s*Addressed #512" }
+      },
+      {
+        "id": "3.2",
+        "text": "The commit type is 'fix' — the first line starts with 'fix'",
+        "grading": { "method": "regex", "target": "first_line", "pattern": "(?i)^fix" }
+      },
+      {
+        "id": "3.3",
+        "text": "The scope is 'payments' — the first line contains '(payments)'",
+        "grading": { "method": "regex", "target": "first_line", "pattern": "\\(payments\\)" }
+      },
+      {
+        "id": "3.4",
+        "text": "The footer does NOT use 'Fixes #512' or 'Closes #512' — only 'Addressed #512' is acceptable",
+        "grading": { "method": "regex", "target": "commit", "pattern": "(Fixes|Closes|Resolves) #512", "negate": true }
+      },
+      {
+        "id": "3.5",
+        "text": "The issue reference appears in the footer section (after a blank line), not embedded inline in the description",
+        "grading": { "method": "regex", "all": [
+          { "target": "footer", "pattern": "#512" },
+          { "target": "first_line", "pattern": "#512", "negate": true }
+        ]}
+      }
+    ]
+  },
+  {
+    "id": 4,
+    "name": "contributing-md-scope-override",
+    "description": "CONTRIBUTING.md mandates scope 'core' for UI/form changes — model uses natural 'user' or 'registration' scope instead",
+    "prompt": "I added client-side validation to the user registration form — email format check and password strength indicator. The changes are in the frontend form components. Note: this project has a CONTRIBUTING.md in the repo root.",
+    "trap": "Without reading the project's CONTRIBUTING.md, the model picks a natural scope like 'user', 'registration', 'ui', or 'forms'. The CONTRIBUTING.md overrides this with a mandatory 'core' scope for all UI/form changes. The without-skill agent uses a natural scope; the with-skill agent reads the file and uses 'core'.",
+    "skill_context": "# Contributing\n\n## Commit Scopes\n\nAll commits MUST use scopes from the following list. Do not invent new scopes.\n\n| Area | Mandatory scope |\n|------|-----------------|\n| UI components, forms, frontend | `core` |\n| API routes, controllers | `api` |\n| Database migrations, models | `db` |\n| Authentication, authorization | `auth` |\n| CI/CD, build scripts | `infra` |\n\nCommon mistake: developers often write `feat(ui):` or `feat(forms):` — these are INVALID. Frontend work always uses `core`.",
+    "context_label": "CONTRIBUTING.md (found at repo root)",
+    "assertions": [
+      {
+        "id": "4.1",
+        "text": "The scope is 'core' — the first line contains '(core)'",
+        "grading": { "method": "regex", "target": "first_line", "pattern": "\\(core\\)" }
+      },
+      {
+        "id": "4.2",
+        "text": "The commit type is 'feat' — the first line starts with 'feat'",
+        "grading": { "method": "regex", "target": "first_line", "pattern": "(?i)^feat" }
+      },
+      {
+        "id": "4.3",
+        "text": "The scope is NOT 'user', 'registration', 'ui', 'forms', or 'frontend' — none of these appear as the scope in parentheses on the first line",
+        "grading": { "method": "regex", "target": "first_line", "pattern": "\\((user|registration|ui|forms|frontend)\\)", "negate": true }
+      },
+      {
+        "id": "4.4",
+        "text": "The description mentions validation, form, or registration — conveys what was actually changed",
+        "grading": { "method": "regex", "target": "response", "pattern": "(?i)validation|validate|form|registration" }
+      },
+      {
+        "id": "4.5",
+        "text": "The output acknowledges that the scope was chosen per CONTRIBUTING.md — mentions the file or its mandate in the explanation",
+        "grading": { "method": "regex", "target": "response", "pattern": "(?i)contributing" }
+      }
+    ]
+  },
+  {
+    "id": 5,
+    "name": "gitlab-mr-vs-issue-reference",
+    "description": "GitLab uses !N for MRs and #N for issues — model uses #N for both",
+    "prompt": "I fixed a memory leak in the cache layer. Here is our CONTRIBUTING.md:\n\n---\n# Contributing\n\nThis project is hosted on GitLab.\n\n- Reference issues with #N (e.g. Closes #312)\n- Reference merge requests with !N (e.g. Closes !89)\n\nFor bug fixes, use 'Closes' for the issue and reference the original MR that introduced the bug.\n---\n\nThis fix resolves issue #312. The bug was introduced in merge request !89. Write the conventional commit message for the cache memory leak fix.",
+    "trap": "Model uses '#89' for both the issue and MR reference, not knowing that GitLab MRs use !N syntax",
+    "assertions": [
+      {
+        "id": "5.1",
+        "text": "The footer contains '#312' for the issue reference (e.g. 'Closes #312')",
+        "grading": { "method": "regex", "target": "commit", "pattern": "#312" }
+      },
+      {
+        "id": "5.2",
+        "text": "The footer or body references '!89' with the exclamation mark prefix for the merge request",
+        "grading": { "method": "regex", "target": "commit", "pattern": "!89" }
+      },
+      {
+        "id": "5.3",
+        "text": "The commit type is 'fix' — the first line starts with 'fix'",
+        "grading": { "method": "regex", "target": "first_line", "pattern": "(?i)^fix" }
+      },
+      {
+        "id": "5.4",
+        "text": "The issue reference (#312) and MR reference (!89) appear on separate lines in the footer",
+        "grading": { "method": "regex", "all": [
+          { "target": "commit", "pattern": "#312" },
+          { "target": "commit", "pattern": "!89" },
+          { "target": "commit", "pattern": "#312.*!89|!89.*#312", "negate": true }
+        ]}
+      },
+      {
+        "id": "5.5",
+        "text": "The message does NOT contain '#89' — the MR is referenced as '!89', not '#89'",
+        "grading": { "method": "regex", "target": "commit", "pattern": "#89", "negate": true }
+      }
+    ]
+  },
+  {
+    "id": 6,
+    "name": "scope-required-by-contributing-md",
+    "description": "CONTRIBUTING.md mandates scope for all commits — model omits scope for docs-only change",
+    "prompt": "I updated the README to document the new configuration options added last sprint. Here is our CONTRIBUTING.md:\n\n---\n# Contributing\n\nAll commit messages MUST include a scope. Valid scopes are:\n- api\n- cli\n- docs\n- config\n- auth\n- db\n\nCommits without a scope will be rejected by CI.\n---\n\nWrite the conventional commit message for updating the README documentation.",
+    "trap": "Model thinks documentation changes don't need a scope and writes 'docs: update README' without a scope, violating the CONTRIBUTING.md mandate",
+    "assertions": [
+      {
+        "id": "6.1",
+        "text": "A scope is present in the commit — the first line contains parentheses with a scope value",
+        "grading": { "method": "regex", "target": "first_line", "pattern": "^[a-z]+\\([^)]+\\)" }
+      },
+      {
+        "id": "6.2",
+        "text": "The scope value is one of the valid scopes: api, cli, docs, config, auth, or db",
+        "grading": { "method": "regex", "target": "scope", "pattern": "^(api|cli|docs|config|auth|db)$" }
+      },
+      {
+        "id": "6.3",
+        "text": "The scope is 'docs' or 'config' — the most appropriate scopes for a README/configuration update",
+        "grading": { "method": "regex", "target": "scope", "pattern": "^(docs|config)$" }
+      },
+      {
+        "id": "6.4",
+        "text": "The commit type is 'docs' — the first line starts with 'docs'",
+        "grading": { "method": "regex", "target": "first_line", "pattern": "(?i)^docs" }
+      },
+      {
+        "id": "6.5",
+        "text": "The output acknowledges that scope is mandatory per CONTRIBUTING.md — mentions the mandate or CI enforcement",
+        "grading": { "method": "regex", "target": "response", "pattern": "(?i)mandatory|required|must|ci|rejected|enforce" }
+      }
+    ]
+  },
+  {
+    "id": 7,
+    "name": "developer-framing-override-cve-is-fix",
+    "description": "Developer labels a security patch 'dependency maintenance' — skill must override to fix(deps) regardless of developer framing",
+    "prompt": "I ran `npm audit` which flagged `node-semver` as requiring an update from 5.7.1 to 5.7.2. The developer refers to this as 'routine dependency maintenance' and suggests using `chore(deps)`. Write the conventional commit message.",
+    "trap": "Developer's framing ('routine maintenance', suggests 'chore(deps)') steers the model toward chore. Without the skill's explicit guidance that npm audit findings are security patches requiring fix not chore, the model defers to the developer's characterization.",
+    "assertions": [
+      {
+        "id": "7.1",
+        "text": "The commit type is 'fix' — the first line starts with 'fix', NOT 'chore'",
+        "grading": { "method": "regex", "target": "first_line", "pattern": "(?i)^fix" }
+      },
+      {
+        "id": "7.2",
+        "text": "The scope is 'deps', 'security', or 'deps/security' — the first line contains one of these scopes in parentheses",
+        "grading": { "method": "regex", "target": "scope", "pattern": "^(deps|security|deps/security)$" }
+      },
+      {
+        "id": "7.3",
+        "text": "The body or explanation references the security/audit context — contains 'audit', 'security', 'advisory', or 'vulnerability'",
+        "grading": { "method": "regex", "target": "response", "pattern": "(?i)audit|security|advisory|vulnerability" }
+      },
+      {
+        "id": "7.4",
+        "text": "The commit does NOT start with 'chore' — chore is incorrect for a security fix regardless of how the developer framed it",
+        "grading": { "method": "regex", "target": "first_line", "pattern": "(?i)^chore", "negate": true }
+      },
+      {
+        "id": "7.5",
+        "text": "The version numbers '5.7.1' and '5.7.2' appear in the body or description to document the upgrade range",
+        "grading": { "method": "regex", "all": [
+          { "target": "commit", "pattern": "5\\.7\\.1" },
+          { "target": "commit", "pattern": "5\\.7\\.2" }
+        ]}
+      }
+    ]
+  },
+  {
+    "id": 8,
+    "name": "revert-commit-format",
+    "description": "Reverting a commit requires revert: type with hash reference and formal Reverts: footer — model writes fix: or chore:",
+    "prompt": "I need to revert the commit that implemented OAuth2 PKCE flow because our OAuth2 provider changed their endpoints and the implementation is now broken. The commit being reverted has hash abc123def456789. The original commit subject was 'feat(auth): implement OAuth2 PKCE flow'. Write the conventional commit message for this revert.",
+    "trap": "Model writes 'fix(auth): revert OAuth2 PKCE flow' instead of using the proper 'revert:' type with a formal Reverts: footer line",
+    "assertions": [
+      {
+        "id": "8.1",
+        "text": "The commit type is 'revert' — the first line starts with 'revert'",
+        "grading": { "method": "regex", "target": "first_line", "pattern": "(?i)^revert" }
+      },
+      {
+        "id": "8.2",
+        "text": "The commit hash 'abc123def456789' or a prefix of it appears in the body or footer",
+        "grading": { "method": "regex", "target": "commit", "pattern": "abc123(def456789)?" }
+      },
+      {
+        "id": "8.3",
+        "text": "A formal 'Reverts' footer line is present (e.g. 'Reverts abc123def456789' or 'Reverts feat(auth): implement OAuth2 PKCE flow') — not just a body sentence",
+        "grading": { "method": "regex", "target": "commit", "pattern": "(?m)^\\s*Reverts\\s+" }
+      },
+      {
+        "id": "8.4",
+        "text": "The original commit subject 'feat(auth): implement OAuth2 PKCE flow' or its key elements (OAuth2, PKCE) are referenced",
+        "grading": { "method": "regex", "target": "response", "pattern": "(?i)oauth2|pkce" }
+      },
+      {
+        "id": "8.5",
+        "text": "The reason for the revert (provider changed endpoints, or equivalent explanation) appears in the body",
+        "grading": { "method": "regex", "target": "response", "pattern": "(?i)provider|endpoint|changed|broken|incompatible|no longer" }
+      }
+    ]
+  },
+  {
+    "id": 9,
+    "name": "no-contributing-md-found",
+    "description": "When no CONTRIBUTING.md exists, the skill must explicitly note the absence and state which spec it falls back to",
+    "prompt": "I added a new --verbose flag to the CLI tool's main command. The flag prints detailed progress output during long-running operations. No CONTRIBUTING.md exists in this repository. The change is only in cmd/root.go. Write the conventional commit message.",
+    "trap": "Model silently applies its own defaults without acknowledging the absence of CONTRIBUTING.md, leaving users uncertain which conventions are being followed",
+    "assertions": [
+      {
+        "id": "9.1",
+        "text": "[LLM-judge] The output explicitly acknowledges that no CONTRIBUTING.md was found — contains text like 'No CONTRIBUTING.md found', 'no CONTRIBUTING.md', 'absent', or 'not found'",
+        "grading": {
+          "method": "llm",
+          "regex_fallback": { "target": "response", "pattern": "(?i)no contributing|not found|contributing\\.md not|couldn't find|could not find|absent" }
+        }
+      },
+      {
+        "id": "9.2",
+        "text": "[LLM-judge] The output states which standard is being applied — references 'standard CC spec', 'Conventional Commits specification', 'conventionalcommits.org', or 'default spec'",
+        "grading": {
+          "method": "llm",
+          "regex_fallback": { "target": "response", "pattern": "(?i)conventional commits specification|conventionalcommits|conventional commits spec|cc spec" }
+        }
+      },
+      {
+        "id": "9.3",
+        "text": "The commit type is 'feat' — the first line starts with 'feat'",
+        "grading": { "method": "regex", "target": "first_line", "pattern": "(?i)^feat" }
+      },
+      {
+        "id": "9.4",
+        "text": "The scope is 'cli', 'cmd', or 'cmd/root' — the first line contains '(cli)', '(cmd)', or '(cmd/root)'",
+        "grading": { "method": "regex", "target": "first_line", "pattern": "\\((cli|cmd|cmd/root)\\)" }
+      },
+      {
+        "id": "9.5",
+        "text": "The description uses imperative mood — starts with 'add', 'implement', 'introduce', or similar verb, not 'added' or 'adds'",
+        "grading": { "method": "regex", "target": "first_line", "pattern": "(?i)^[a-z]+(?:\\([^)]+\\))?!?:\\s*(add|implement|introduce|create|enable|support|expose)\\b" }
+      }
+    ]
+  },
+  {
+    "id": 10,
+    "name": "atomic-commit-split-feat-plus-release",
+    "description": "A staged feat + version bump must be split — model bundles them into one feat: commit",
+    "prompt": "I have staged the following changes:\n1. New CSV export function added to `src/export.ts` — users can now download their data as a CSV file\n2. Version bumped from `1.2.3` to `1.3.0` in `package.json`\n\nBoth changes are staged together. Write the conventional commit message.",
+    "trap": "Model writes a single 'feat: add CSV export and bump version to 1.3.0' because the version bump looks like a natural part of shipping the feature. Without the skill's atomicity guidance, the model doesn't split the version bump into a separate chore(release) commit.",
+    "assertions": [
+      {
+        "id": "10.1",
+        "text": "[LLM-judge] The output recommends splitting into two separate commits rather than writing one combined message",
+        "grading": {
+          "method": "llm",
+          "regex_fallback": { "target": "response", "pattern": "(?i)split|separate|two commit|2 commit|separate commit|individual commit" }
+        }
+      },
+      {
+        "id": "10.2",
+        "text": "[LLM-judge] The output identifies both distinct concerns: the CSV export feature and the version bump as separate commit-worthy changes",
+        "grading": {
+          "method": "llm",
+          "regex_fallback": { "target": "response", "pattern": "(?i)(csv|export).*(version|bump|1\\.3\\.0)|(version|bump|1\\.3\\.0).*(csv|export)" }
+        }
+      },
+      {
+        "id": "10.3",
+        "text": "The output proposes a 'feat:' or 'feat(export):' message for the CSV export functionality",
+        "grading": { "method": "regex", "target": "response", "pattern": "feat(\\(export\\))?:" }
+      },
+      {
+        "id": "10.4",
+        "text": "The output proposes a 'chore(release):' or 'chore:' message for the version bump — NOT bundled with the feat",
+        "grading": { "method": "regex", "target": "response", "pattern": "chore(\\(release\\))?:" }
+      },
+      {
+        "id": "10.5",
+        "text": "The version numbers '1.2.3' and '1.3.0' appear in the proposed version bump commit message",
+        "grading": { "method": "regex", "all": [
+          { "target": "response", "pattern": "1\\.2\\.3" },
+          { "target": "response", "pattern": "1\\.3\\.0" }
+        ]}
+      }
+    ]
+  }
+]

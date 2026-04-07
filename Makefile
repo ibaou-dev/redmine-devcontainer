@@ -16,11 +16,11 @@ COMPOSE_TRAEFIK := docker compose -f docker-compose.yml
 
 .PHONY: help setup start start-local stop stop-local restart logs shell \
         migrate seed test start-test stop-test start-traefik stop-traefik \
-        references worktree worktree-remove build lint
+        references worktree worktree-remove build lint scaffold-plugin scaffold-theme
 
 help: ## Show available commands
 	@printf '\nRedmine Development Environment\n\n'
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
+	@grep -hE '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
 	  awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}'
 	@printf '\n'
 
@@ -69,6 +69,7 @@ stop-test: ## Stop and remove ephemeral test environment
 	$(COMPOSE_TEST) down
 
 test: ## Run Playwright e2e tests (starts test env, waits, then runs tests)
+	@test -d e2e || (echo "No e2e/ directory found. Create one with Playwright tests first. See CONTRIBUTING.md." && exit 1)
 	$(COMPOSE_TEST) up -d
 	@bash scripts/wait-healthy.sh redmine $${TEST_REDMINE_PORT:-4001}
 	cd e2e && npx playwright test
@@ -98,3 +99,11 @@ worktree-remove: ## Remove a git worktree and delete its branch: make worktree-r
 
 lint: ## Run RuboCop on plugin code
 	bundle exec rubocop plugins/
+
+# ── Scaffolding ───────────────────────────────────────────────────────────────
+
+scaffold-plugin: ## Scaffold a new Redmine plugin interactively (or: make scaffold-plugin NAME=redmine_foo)
+	@bash scripts/scaffold-plugin.sh "$(NAME)"
+
+scaffold-theme: ## Scaffold a new Redmine theme interactively (or: make scaffold-theme NAME=my-theme)
+	@bash scripts/scaffold-theme.sh "$(NAME)"

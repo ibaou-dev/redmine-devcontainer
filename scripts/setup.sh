@@ -16,12 +16,21 @@ echo "========================================"
 echo ""
 echo "Checking dependencies..."
 MISSING=()
-for cmd in docker git make node npx; do
+for cmd in docker git make; do
   if command -v "$cmd" &>/dev/null; then
     echo "  [ok] $cmd"
   else
     echo "  [missing] $cmd"
     MISSING+=("$cmd")
+  fi
+done
+
+# node/npx are optional (only needed for e2e tests)
+for cmd in node npx; do
+  if command -v "$cmd" &>/dev/null; then
+    echo "  [ok] $cmd"
+  else
+    echo "  [optional] $cmd (only needed for e2e tests)"
   fi
 done
 
@@ -89,6 +98,31 @@ echo "Seeding default data..."
 $COMPOSE_LOCAL exec -T redmine bundle exec rake db:seed RAILS_ENV=development 2>&1 || \
   echo "  Seed already applied or skipped."
 
+# ── 9. Create .agents/notes/login_credentials.md ─────────────────────────────
+echo ""
+if [ ! -f .agents/notes/login_credentials.md ]; then
+  mkdir -p .agents/notes
+  cat > .agents/notes/login_credentials.md <<'CREDEOF'
+# Redmine Local Dev Credentials
+
+Default credentials for the local Redmine instance:
+
+- **URL:** http://localhost:4000 (or REDMINE_PORT from .env)
+- **Username:** admin
+- **Password:** admin
+
+> Redmine will prompt you to change the password on first login.
+> Update this file with your new password after changing it.
+
+## Browser Automation Note
+
+When using browser automation (Playwright, etc.), clear input fields
+before typing (select all + backspace) to avoid autocomplete appending
+to existing values.
+CREDEOF
+  echo "Created .agents/notes/login_credentials.md"
+fi
+
 # ── Done ─────────────────────────────────────────────────────────────────────
 echo ""
 echo "========================================"
@@ -96,7 +130,8 @@ echo " Setup complete!                        "
 echo "========================================"
 echo ""
 echo "  Redmine: http://localhost:${REDMINE_PORT:-4000}"
-echo "  Credentials: see .agents/notes/login_credentials.md"
+echo "  Credentials: admin / admin (change password on first login)"
+echo "  Details: see .agents/notes/login_credentials.md"
 echo ""
 echo "  make help    — show all available commands"
 echo "  make shell   — open a shell in the Redmine container"

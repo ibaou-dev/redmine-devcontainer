@@ -6,7 +6,8 @@
 #   - nvm + Node.js LTS + pnpm  (for e2e, theme tooling, npm scripts)
 #   - solargraph + rubocop       (Ruby IDE support — language server, linting)
 
-FROM redmine-dev:6.1.1
+ARG REDMINE_VERSION=6.1.1
+FROM redmine-dev:${REDMINE_VERSION}
 
 USER root
 

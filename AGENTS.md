@@ -1,16 +1,17 @@
 # Redmine Development Guidelines
 
-This document outlines the approach for developing in this Redmine 6.1.1 environment.
+This document outlines the approach for developing in this Redmine environment.
 
 ## Environment Overview
 
-- **Version:** Redmine 6.1.1 (Dockerized, Rails 7.2.3, Ruby 3.2+)
+- **Version:** Redmine 6.x (see `REDMINE_VERSION` in `.env` — default 6.1.1)
+- **Stack:** Rails 7.2, Ruby 3.2+, PostgreSQL 14, Docker
 - **Base Directory (in container):** `/usr/src/redmine`
 - **Development Workflow:**
     - `themes/` and `plugins/` directories are bind-mounted into the container.
     - Changes made locally are reflected immediately (no restart needed for CSS/views).
     - Ruby/config changes may require `make restart`.
-- **Reference Code:** Full Redmine 6.1.1 source at `.references/redmine` (local-only, initialize with `make references`).
+- **Reference Code:** Redmine source at `.references/redmine` (local-only, initialize with `make references`).
 
 ## Starting the Environment
 
@@ -32,7 +33,7 @@ For specialized development tasks, use these local skills (in `.agents/skills/`)
 
 - **`redmine-theme-developer`** — Expert in Redmine 6.x theme development. Covers Propshaft asset pipeline, CSS custom properties, `theme.js` DOM patterns, base stylesheet override approach. **Auto-triggers for any file in `themes/`**.
 
-- **`redmine-cli`** — Manage Redmine issues via REST API. Python CLI at `scripts/redmine_cli.py`. Configuration in `.red/config.json`.
+- **`redmine-cli`** — Manage Redmine issues via REST API. Python CLI at `.agents/skills/redmine-cli/scripts/redmine_cli.py`. Configuration in `.red/config.json` (git-ignored).
 
 ### Infrastructure Skills
 
@@ -40,20 +41,15 @@ For specialized development tasks, use these local skills (in `.agents/skills/`)
 
 - **`git-workflow`** — Git workflow, Conventional Commits, branching strategy. Use when creating branches, writing commit messages, or setting up CONTRIBUTING.md.
 
+- **`git-conventional-commits`** — Structured commit message generation with Conventional Commits spec. Auto-detects project issue tracker format.
+
 ### Agent/Skill Management
 
-- **`skill-creator`** — Create and improve agent skills. Targets Claude Code skills (`.agents/skills/<name>/SKILL.md`) and OpenCode agents (`.opencode/agents/<name>.md`). Includes evaluation framework.
-
-- **`opencode-agent-creator`** — Create OpenCode agents with YAML frontmatter configuration.
-
-### Task Management
-
-- **`beads`** — Git-backed issue tracking with dependency awareness. Use instead of TodoWrite.
+- **`skill-creator`** — Create and improve agent skills. Targets Claude Code skills (`.agents/skills/<name>/SKILL.md`). Includes evaluation framework.
 
 ## Reference Paths
 
 ### Plugin Development
-- **Plugin examples:** `plugins/redmine_pipeline_tracker/` — real in-progress CI/CD plugin
 - **Core extension points:** `.references/redmine/lib/redmine/` — plugin, hook, acts_as modules
 - **Available view hooks:** Search `.references/redmine/app/views/` for `call_hook`
 - **Test fixtures:** `.references/redmine/test/fixtures/`
@@ -62,7 +58,16 @@ For specialized development tasks, use these local skills (in `.agents/skills/`)
 - **Core Stylesheets:** `.references/redmine/app/assets/stylesheets/application.css`
 - **Responsive:** `.references/redmine/app/assets/stylesheets/responsive.css`
 - **Official themes:** `.references/redmine/app/assets/themes/`
-- **Theme example:** `themes/ibaou-modern/` — modern JIRA-inspired theme
+
+## Scaffolding New Plugins and Themes
+
+```bash
+make scaffold-plugin    # Interactive: prompts for name, author, description
+make scaffold-theme     # Interactive: prompts for name and options
+```
+
+Or use the AI skills directly — just describe what you want and the agent will
+scaffold the correct structure for your Redmine version.
 
 ## Implementation Workflow
 
@@ -72,7 +77,6 @@ When working on new features or changes:
 2. Use the `redmine-plugin-developer` skill for plugin work, `redmine-theme-developer` for theme work.
 3. Run `make migrate` after adding any new migration files.
 4. Test changes against the live environment at `http://localhost:${REDMINE_PORT:-4000}`.
-5. Run `make test` for e2e validation of UI changes.
 
 ## Git Worktrees
 
@@ -81,10 +85,10 @@ Worktrees allow simultaneous work on multiple branches, each with an isolated Do
 **Standard location: sibling directories next to the main repo.**
 
 ```
-/home/ibaou/workspace/
-├── redmine-development/        ← main repo
-├── redmine-feature-foo/        ← worktree
-└── redmine-fix-bar/            ← worktree
+/path/to/workspace/
+├── redmine-devcontainer/   ← main repo
+├── redmine-feature-foo/    ← worktree
+└── redmine-fix-bar/        ← worktree
 ```
 
 ### Create
@@ -111,7 +115,7 @@ git add ... && git commit -m "feat(...): ..."
 git push -u origin feature/my-feature
 
 # Merge back from the main repo:
-cd ../redmine-development
+cd ../redmine-devcontainer
 git merge feature/my-feature --no-ff
 ```
 

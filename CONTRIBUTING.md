@@ -29,8 +29,8 @@ collaboration smooth, please follow the guidelines below.
 **Examples:**
 
 ```
-plugin/redmine-pipeline-tracker-pipeline-view
-theme/ibaou-modern-dark-mode
+plugin/my-plugin-new-feature
+theme/my-theme-dark-mode
 feat/worktree-port-autodetect
 fix/migrate-broken-on-fresh-db
 ```
@@ -138,7 +138,7 @@ make stop-test   # Stop and discard ephemeral test environment
 - The test environment runs on `http://localhost:${TEST_REDMINE_PORT:-4001}`.
 - Test data is fully ephemeral (PostgreSQL on `tmpfs`) — each `make start-test` starts
   clean.
-- Run `make test` before submitting any PR that touches UI, controllers, or migrations.
+- If e2e tests exist in `e2e/`, ensure `make test` passes before submitting any PR that touches UI, controllers, or migrations.
 
 ---
 
@@ -146,7 +146,7 @@ make stop-test   # Stop and discard ephemeral test environment
 
 - Keep PRs focused. One concern per PR.
 - Reference related issues in the PR description where applicable.
-- Ensure `make test` passes before requesting review.
+- If e2e tests exist in `e2e/`, ensure `make test` passes before requesting review.
 - Add a short description of what was changed and why — not just what the diff shows.
 - For plugin or theme PRs, include a brief note on how to manually verify the change
   (e.g., "Navigate to Issues list — the new Pipeline column should appear").
