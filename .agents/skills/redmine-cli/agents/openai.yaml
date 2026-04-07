@@ -1,0 +1,3 @@
+interface:
+  display_name: "Redmine CLI"
+  short_description: "Help with Redmine CLI tasks"

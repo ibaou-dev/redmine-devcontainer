@@ -1,0 +1,51 @@
+# docker-compose.local.yml
+# Local development override — no Traefik required.
+#
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.local.yml up -d
+#
+# Or via Makefile:
+#   make start
+#
+# Port is configurable via REDMINE_PORT in .env (default: 4000).
+
+services:
+  redmine:
+    ports:
+      - "${REDMINE_PORT:-4000}:3000"
+    networks:
+      devlocal-net:
+    labels:
+      traefik.enable: "false"
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 3G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+  repo-sync:
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 128M
+
+  postgres:
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+
+# Override both networks to be local (not external).
+# This removes the Traefik proxy dependency completely.
+networks:
+  devlocal-net:
+    driver: bridge
+    external: false
+  proxy:
+    driver: bridge
+    external: false

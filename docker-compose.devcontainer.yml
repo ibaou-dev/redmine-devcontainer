@@ -1,0 +1,28 @@
+# docker-compose.devcontainer.yml
+# DevContainer overlay — used only by .devcontainer/devcontainer.json.
+#
+# Stack: docker-compose.test.yml + this file.
+# Ephemeral postgres (tmpfs) is intentional — each worktree/agent gets a clean slate.
+#
+# Overrides the redmine service to:
+#   - Build from Dockerfile.devcontainer (nvm/node/pnpm + solargraph/rubocop)
+#   - Mount the project root at /workspace
+#   - Raise memory to 3G (Redmine entrypoint runs all ~60 base migrations on startup;
+#     1.5G from the test compose is not enough for Rails + migration peak load)
+
+services:
+  redmine:
+    build:
+      context: .
+      dockerfile: Dockerfile.devcontainer
+    image: redmine-dev:devcontainer
+    volumes:
+      - .:/workspace:cached
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 3G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
