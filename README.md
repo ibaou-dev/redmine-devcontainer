@@ -64,6 +64,8 @@ redmine-devcontainer/
 │   ├── scaffold-theme.sh       # Interactive theme scaffolder
 │   ├── init-references.sh      # Clone Redmine source into .references/
 │   ├── new-worktree.sh         # Create isolated git worktree
+│   ├── attach-plugin.sh        # Attach an EXISTING plugin repo into plugins/
+│   ├── detach-plugin.sh        # Remove an attached plugin
 │   └── wait-healthy.sh         # Poll until Redmine responds
 ├── .agents/
 │   └── skills/                 # AI agent skills for development
@@ -88,6 +90,39 @@ redmine-devcontainer/
 ---
 
 ## Development Workflow
+
+> **The model:** this devcontainer is your **stable workspace** — it carries Docker, Make,
+> and the AI skills (`.claude/skills` → `.agents/skills`). **Your plugin(s) live in
+> `plugins/<name>`** (git-ignored here) and are bind-mounted into the container. Open your
+> editor / Claude Code session at the **devcontainer root** so the skills auto-load for
+> whichever plugin you are working on.
+
+### Attaching an Existing Plugin Repo
+
+To develop a plugin that already has its own git repository (the common case), attach it
+rather than scaffolding a new one:
+
+```bash
+# Local repo (sibling checkout) → attached as a git worktree (no second copy):
+make attach-plugin SRC=../redmine_my_plugin                       # branch wt/<name>
+make attach-plugin SRC=../redmine_my_plugin REF=feature/x         # specific branch
+
+# Remote repo → cloned:
+make attach-plugin SRC=https://git.example.com/me/redmine_my_plugin.git
+
+# Remove it again (worktree-aware):
+make detach-plugin NAME=redmine_my_plugin
+```
+
+`attach-plugin` places the plugin at `plugins/<name>`, rebuilds the image (so the plugin's
+`PluginGemfile` gems are installed), and runs plugin migrations. Because the plugin keeps
+its own `.git`, you commit/branch/push from inside `plugins/<name>` exactly as normal — its
+canonical repo structure is untouched. `plugins/*` is git-ignored in this repo, so attached
+plugins are never accidentally committed here.
+
+> **Note:** the dev image omits the Ruby `test` bundle group for a lean runtime. To run a
+> plugin's test suite, give the plugin a self-contained CI image (official `redmine:` base +
+> full `bundle install`); see the plugin's own `ci/` for an example.
 
 ### Plugin Development
 

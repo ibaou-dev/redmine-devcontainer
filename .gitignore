@@ -25,3 +25,7 @@ worktrees/
 # Ruby LSP cache
 .ruby-lsp/
 
+
+# Project-local: plugin under development is provided via git worktree, never tracked here
+plugins/*
+!plugins/.gitkeep
