@@ -8,6 +8,10 @@ This document outlines the approach for developing in this Redmine environment.
 - **Stack:** Rails 7.2, Ruby 3.2+, PostgreSQL 14, Docker
 - **Base Directory (in container):** `/usr/src/redmine`
 - **Development Workflow:**
+    - This devcontainer is the **stable workspace root** (Docker, Make, and the AI skills
+      via `.claude/skills` → `.agents/skills`). **Plugins live in `plugins/<name>`**
+      (git-ignored) and are bind-mounted in. Run the agent/editor session from the
+      **devcontainer root** so skills auto-trigger for the attached plugin.
     - `themes/` and `plugins/` directories are bind-mounted into the container.
     - Changes made locally are reflected immediately (no restart needed for CSS/views).
     - Ruby/config changes may require `make restart`.
@@ -68,6 +72,25 @@ make scaffold-theme     # Interactive: prompts for name and options
 
 Or use the AI skills directly — just describe what you want and the agent will
 scaffold the correct structure for your Redmine version.
+
+## Attaching an Existing Plugin
+
+To work on a plugin that already has its own git repository, attach it into `plugins/`
+instead of scaffolding. A **local** repo is attached as a git **worktree** (no second
+copy; shares the source repo's `.git` and remotes), a **remote** URL is cloned.
+
+```bash
+make attach-plugin SRC=../redmine_my_plugin                    # worktree, branch wt/<name>
+make attach-plugin SRC=../redmine_my_plugin REF=feature/x      # worktree on a branch
+make attach-plugin SRC=https://git.example.com/me/plugin.git   # clone
+make detach-plugin NAME=redmine_my_plugin                      # remove (worktree-aware)
+```
+
+`attach-plugin` rebuilds the image (to install the plugin's `PluginGemfile` gems) and runs
+plugin migrations. Commit/branch/push from **inside `plugins/<name>`** — it is the real
+plugin repo; the devcontainer never tracks it (`plugins/*` is git-ignored). Running the
+plugin's tests needs the `test` bundle group, which this dev image omits — give the plugin
+a self-contained CI image (official `redmine:` base + full `bundle install`).
 
 ## Implementation Workflow
 

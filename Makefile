@@ -16,7 +16,8 @@ COMPOSE_TRAEFIK := docker compose -f docker-compose.yml
 
 .PHONY: help setup start start-local stop stop-local restart logs shell \
         migrate seed test start-test stop-test start-traefik stop-traefik \
-        references worktree worktree-remove build lint scaffold-plugin scaffold-theme
+        references worktree worktree-remove build lint scaffold-plugin scaffold-theme \
+        attach-plugin detach-plugin
 
 help: ## Show available commands
 	@printf '\nRedmine Development Environment\n\n'
@@ -107,3 +108,16 @@ scaffold-plugin: ## Scaffold a new Redmine plugin interactively (or: make scaffo
 
 scaffold-theme: ## Scaffold a new Redmine theme interactively (or: make scaffold-theme NAME=my-theme)
 	@bash scripts/scaffold-theme.sh "$(NAME)"
+
+# ── Attach / detach external plugins (the devcontainer + ANY plugin) ──────────
+
+attach-plugin: ## Attach a plugin repo into plugins/, build, migrate: make attach-plugin SRC=<path|url> [NAME=] [REF=]
+	@test -n "$(SRC)" || (echo "Usage: make attach-plugin SRC=<local-path|git-url> [NAME=<dir>] [REF=<branch>]" && exit 1)
+	@bash scripts/attach-plugin.sh "$(SRC)" "$(NAME)" "$(REF)"
+	$(COMPOSE_LOCAL) up -d --build
+	@bash scripts/wait-healthy.sh redmine $${REDMINE_PORT:-4000}
+	$(COMPOSE_LOCAL) exec -T redmine bundle exec rake redmine:plugins:migrate RAILS_ENV=development
+
+detach-plugin: ## Remove an attached plugin: make detach-plugin NAME=<dir>
+	@test -n "$(NAME)" || (echo "Usage: make detach-plugin NAME=<dir>" && exit 1)
+	@bash scripts/detach-plugin.sh "$(NAME)"
