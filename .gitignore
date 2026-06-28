@@ -29,3 +29,7 @@ worktrees/
 # Project-local: plugin under development is provided via git worktree, never tracked here
 plugins/*
 !plugins/.gitkeep
+
+# Project-local: themes are attached the same way as plugins; never tracked here
+themes/*
+!themes/.gitkeep

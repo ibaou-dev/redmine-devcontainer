@@ -3,9 +3,9 @@ services:
     build:
       context: .
       args:
-        REDMINE_VERSION: ${REDMINE_VERSION:-6.1.1}
+        REDMINE_VERSION: ${REDMINE_VERSION:-6.1.2}
     # Note: 'image' name here acts as a tag for your custom build
-    image: redmine-dev:${REDMINE_VERSION:-6.1.1}
+    image: redmine-dev:${REDMINE_VERSION:-6.1.2}
     ports:
       - "${REDMINE_PORT:-4000}:3000"
     environment:

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # scripts/init-references.sh
 # Initializes .references/redmine with the Redmine source at the version specified
-# in REDMINE_VERSION (from .env, default: 6.1.1).
+# in REDMINE_VERSION (from .env, default: 6.1.2).
 #
 # This directory is git-ignored (local-only). It provides a read-only reference
 # for IDE navigation, agent skills, and understanding Redmine internals.
@@ -18,7 +18,7 @@ set -a
 [ -f .env ] && source .env
 set +a
 
-REDMINE_VERSION="${REDMINE_VERSION:-6.1.1}"
+REDMINE_VERSION="${REDMINE_VERSION:-6.1.2}"
 REFERENCES_DIR=".references/redmine"
 
 if [ -d "$REFERENCES_DIR/.git" ]; then

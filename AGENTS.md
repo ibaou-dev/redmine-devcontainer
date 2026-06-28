@@ -4,7 +4,7 @@ This document outlines the approach for developing in this Redmine environment.
 
 ## Environment Overview
 
-- **Version:** Redmine 6.x (see `REDMINE_VERSION` in `.env` — default 6.1.1)
+- **Version:** Redmine 6.x (see `REDMINE_VERSION` in `.env` — default 6.1.2)
 - **Stack:** Rails 7.2, Ruby 3.2+, PostgreSQL 14, Docker
 - **Base Directory (in container):** `/usr/src/redmine`
 - **Development Workflow:**
@@ -92,6 +92,15 @@ plugin repo; the devcontainer never tracks it (`plugins/*` is git-ignored). Runn
 plugin's tests needs the `test` bundle group, which this dev image omits — give the plugin
 a self-contained CI image (official `redmine:` base + full `bundle install`).
 
+## CI/CD
+
+Each plugin ships its own CI/CD config and follows a shared pipeline (test image → test →
+SonarQube branch/PR analysis → quality gate → PR → merge → package → tag → release). See
+**[docs/CICD.md](docs/CICD.md)** for the layout, realistic per-plugin quality gates, and the
+gotchas — in particular: **add an eager-load boot check**
+(`bundle exec rails runner "Rails.application.eager_load!"`) so load-time errors fail CI
+instead of crash-looping production, and remember the dev image omits the `test` bundle group.
+
 ## Implementation Workflow
 
 When working on new features or changes:
@@ -100,6 +109,8 @@ When working on new features or changes:
 2. Use the `redmine-plugin-developer` skill for plugin work, `redmine-theme-developer` for theme work.
 3. Run `make migrate` after adding any new migration files.
 4. Test changes against the live environment at `http://localhost:${REDMINE_PORT:-4000}`.
+5. Never translate (`l()`/`I18n`) or hit the DB at module/class-body load time — it crashes
+   eager-load in production (see the `redmine-plugin-developer` skill → *Load-time safety*).
 
 ## Git Worktrees
 

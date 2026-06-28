@@ -12,7 +12,7 @@ cd "$REPO_ROOT"
 
 # Load REDMINE_VERSION from .env if available
 [ -f .env ] && source .env
-REDMINE_VERSION="${REDMINE_VERSION:-6.1.1}"
+REDMINE_VERSION="${REDMINE_VERSION:-6.1.2}"
 
 echo ""
 echo "==================================="
