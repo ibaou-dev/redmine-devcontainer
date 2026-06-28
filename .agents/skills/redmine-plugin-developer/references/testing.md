@@ -21,13 +21,23 @@ bundle exec ruby -I test plugins/plugin_name/test/functional/plugin_things_contr
 bundle exec rake redmine:plugins:test NAME=plugin_name TEST=test/functional/plugin_things_controller_test.rb
 ```
 
+> **The devcontainer dev image omits the Ruby `test` bundle group** (lean runtime), so
+> mocha and friends aren't installed there. Run tests in a CI image that does a full
+> `bundle install` — see `docs/CICD.md`.
+
+> **Add an eager-load boot check** to CI (`bundle exec rails runner "Rails.application.eager_load!"`).
+> The test env doesn't eager-load, so a load-time error (e.g. `l()` in a module body) passes
+> tests but crash-loops Redmine in production. See `init-and-registration.md` → *Load-time safety*.
+
 ## Functional (Controller) Test Pattern
 
 ```ruby
 # test/functional/plugin_things_controller_test.rb
 require File.expand_path('../../test_helper', __FILE__)
 
-class PluginThingsControllerTest < ActionDispatch::IntegrationTest
+# Extend Redmine::IntegrationTest (NOT plain ActionDispatch::IntegrationTest) — that's
+# where Redmine defines the `log_user` helper used below.
+class PluginThingsControllerTest < Redmine::IntegrationTest
   fixtures :projects, :users, :roles, :members, :member_roles,
            :trackers, :issue_statuses, :enumerations
 

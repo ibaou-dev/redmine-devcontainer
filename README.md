@@ -84,6 +84,9 @@ redmine-devcontainer/
 ├── .env.example                # Environment variable template
 ├── Makefile                    # Developer workflow commands
 ├── Dockerfile                  # Custom Redmine image (version from REDMINE_VERSION)
+├── docs/
+│   └── CICD.md                 # Per-plugin CI/CD pipeline guide + gotchas
+├── CLAUDE.md                   # Claude Code configuration / key-file index
 └── AGENTS.md                   # AI agent development guidelines
 ```
 
@@ -293,6 +296,19 @@ expertise. They auto-trigger based on context in Claude Code and OpenCode.
 
 ---
 
+## CI/CD
+
+Each plugin keeps its own CI/CD config (so it builds anywhere) following a shared,
+infrastructure-agnostic pipeline: **build a test image → test → SonarQube branch/PR analysis
+→ quality gate → PR → merge → package → tag → publish release**.
+
+See **[docs/CICD.md](docs/CICD.md)** for the recommended setup, the per-plugin file layout,
+realistic quality-gate advice, and the hard-won gotchas (eager-load boot checks, the dev
+image omitting the `test` bundle group, remote-daemon bind mounts, SonarQube Ruby coverage,
+`COMPOSE_PROJECT_NAME` collisions, and more).
+
+---
+
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for branch naming conventions, commit format, and
@@ -312,5 +328,5 @@ All configuration is via `.env` (copy from `.env.example`):
 | `TRAEFIK_HOST` | `redmine.localhost` | Hostname for Traefik routing |
 | `POSTGRES_PASSWORD` | _(change me)_ | PostgreSQL password |
 | `REDMINE_SECRET_KEY_BASE` | _(change me)_ | Rails secret key base |
-| `REDMINE_VERSION` | `6.1.1` | Redmine image tag and source reference version |
+| `REDMINE_VERSION` | `6.1.2` | Redmine image tag and source reference version |
 | `REDMINE_API_KEY` | _(unset)_ | Redmine system API key for repo-sync (optional) |

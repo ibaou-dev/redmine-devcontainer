@@ -15,8 +15,8 @@ services:
     build:
       context: .
       args:
-        REDMINE_VERSION: ${REDMINE_VERSION:-6.1.1}
-    image: redmine-dev:${REDMINE_VERSION:-6.1.1}
+        REDMINE_VERSION: ${REDMINE_VERSION:-6.1.2}
+    image: redmine-dev:${REDMINE_VERSION:-6.1.2}
     ports:
       - "${TEST_REDMINE_PORT:-4001}:3000"
     environment:

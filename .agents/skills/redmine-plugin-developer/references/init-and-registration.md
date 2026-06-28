@@ -173,3 +173,45 @@ won't survive Rails code reloading in development mode.
 Available after/before targets for `:project_menu`:
 `:overview`, `:activity`, `:roadmap`, `:issues`, `:news`, `:documents`,
 `:wiki`, `:boards`, `:files`, `:repository`, `:settings`
+
+## Load-time / eager-load safety (avoid boot crash loops)
+
+Code in a **module or class body** runs at load time. In production Rails **eager-loads**
+every file, so a load-time error stops Redmine from booting (crash loop). The test
+environment does **not** eager-load, so these bugs pass tests and only surface in prod.
+
+The classic offender is translating at load time:
+
+```ruby
+# BAD — l()/I18n run when the constant is defined (eager-load) → NoMethodError, boot fails
+module MyHelper
+  OPTIONS = [[l(:label_a), 'a'], [l(:label_b), 'b']].freeze
+end
+
+# GOOD — defer translation to call time
+module MyHelper
+  def self.options
+    [[I18n.t(:label_a), 'a'], [I18n.t(:label_b), 'b']]
+  end
+end
+```
+
+Also avoid DB access, `Setting[...]`, or referencing not-yet-loaded constants at load time.
+Guard it in CI with `bundle exec rails runner "Rails.application.eager_load!"` (see `docs/CICD.md`).
+
+## Admin-menu icons (Redmine 6+)
+
+Redmine 6 renders menu icons from an SVG sprite via `sprite_icon`, not the old
+`icon icon-*` background CSS. For a plugin admin-menu item:
+
+```ruby
+menu :admin_menu, :my_plugin, { ... },
+     caption: 'My Plugin',
+     icon:    'my-glyph',                       # sprite id
+     plugin:  'my_plugin',                      # resolves the sprite from plugin_assets
+     html:    { class: 'icon icon-my-glyph' }   # the `icon` class still drives the themed colour
+```
+
+Ship the sprite at `assets/images/icons.svg` (Propshaft serves it at
+`plugin_assets/<plugin>/icons.svg`). Wrap symbols in `<defs>` and id them `icon--my-glyph`.
+Without the `icon` CSS class the glyph renders grey instead of the theme colour.
