@@ -1,3 +1,16 @@
+---
+type: guide
+title: CI/CD for Redmine plugins
+description: CI/CD for Redmine plugins
+status: draft
+tags:
+  - cicd
+  - devcontainer
+  - ci
+generated:
+  by: agent:claude-code/claude-opus-4-8
+  at: 2026-10-08T09:25:53Z
+---
 # CI/CD for Redmine plugins
 
 A recommended, self-contained CI/CD pipeline for a Redmine plugin developed with this

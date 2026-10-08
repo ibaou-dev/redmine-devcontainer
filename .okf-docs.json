@@ -1,0 +1,7 @@
+{
+  "bundleRoot": "docs",
+  "obsidian": false,
+  "agentId": "agent:claude-code",
+  "humanId": "human:ibaou",
+  "staleAfterDays": 180
+}
