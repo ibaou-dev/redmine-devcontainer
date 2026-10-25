@@ -1,165 +1,80 @@
 # Contributing Guidelines
 
-We welcome contributions to this Redmine development environment, including plugins,
-themes, infrastructure improvements, and documentation. To keep our history clean and
-collaboration smooth, please follow the guidelines below.
+Contributions to this workspace — infrastructure, scripts, skills, documentation — are
+welcome. This page is the policy; the procedures it refers to live in
+[`docs/`](docs/index.md).
 
----
+> Contributing to a **plugin** attached under `plugins/` follows *that repository's*
+> guidelines, not this one. Those are separate repositories with separate histories.
 
-## Branching Strategy
+## Branching
 
-### Main Branch
+`main` is stable. All work happens on a branch off `main`; direct commits to `main` are
+not accepted.
 
-`main` is the stable branch. All development happens in feature branches branched from
-`main`. Direct commits to `main` are not accepted.
-
-### Branch Naming
-
-| Prefix | Use for |
-|--------|---------|
-| `feat/` | New general features or capabilities |
+| Prefix | For |
+|---|---|
+| `feat/` | New features or capabilities |
 | `fix/` | Bug fixes |
-| `plugin/` | Plugin feature work (files under `plugins/`) |
-| `theme/` | Theme work (files under `themes/`) |
-| `chore/` | Build, tooling, dependency, or config changes |
-| `docs/` | Documentation-only changes |
-| `test/` | Test additions or fixes with no production code change |
-| `refactor/` | Code restructuring with no behaviour change |
-
-**Examples:**
+| `plugin/` | Plugin-related work in this repository |
+| `theme/` | Theme-related work in this repository |
+| `chore/` | Build, tooling, dependency or config changes |
+| `docs/` | Documentation only |
+| `test/` | Tests, with no production change |
+| `refactor/` | Restructuring, no behaviour change |
 
 ```
-plugin/my-plugin-new-feature
-theme/my-theme-dark-mode
 feat/worktree-port-autodetect
 fix/migrate-broken-on-fresh-db
+docs/okf-bundle-restructure
 ```
 
-### Workflow
+For parallel work, `make worktree BRANCH=feat/my-feature PORT=4010` gives the branch its
+own isolated stack — see [parallel-worktrees](docs/runbooks/parallel-worktrees.md).
 
-1. Branch from `main`.
-2. Implement your changes following the guidelines below.
-3. Ensure tests pass (`make test`).
-4. Submit a Pull Request to `main`.
+## Commit messages
 
----
+[Conventional Commits](https://www.conventionalcommits.org/): `<type>(<scope>): <description>`
 
-## Commit Message Convention
-
-We use **Conventional Commits** to keep our history clean and machine-readable.
-
-**Format:** `<type>(<scope>): <description>`
-
-**Types:**
-
-| Type | When to use |
-|------|-------------|
-| `feat` | A new feature |
-| `fix` | A bug fix |
-| `docs` | Documentation changes only |
-| `style` | Formatting, whitespace; no logic change |
-| `refactor` | Restructuring without behaviour change |
-| `test` | Adding or fixing tests; no production code change |
-| `chore` | Build tasks, tooling, dependencies, config |
-
-**Scope** is optional but encouraged. Use the area of the codebase affected:
-`plugin`, `theme`, `docker`, `makefile`, `e2e`, `scripts`, etc.
-
-**Examples:**
+Types: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`.
+Scope is optional but encouraged — `plugin`, `theme`, `docker`, `makefile`, `e2e`,
+`scripts`, `skills`.
 
 ```
-feat(plugin): add pipeline status column to issues list
-fix(theme): correct sidebar padding on mobile viewport
-chore(docker): pin postgres image to 14.12
-test(e2e): add login flow smoke test
-docs: update README quick start section
+feat(scripts): add port autodetection to new-worktree
+fix(docker): pin postgres image to 14.12
+docs: restructure the bundle into concepts, runbooks and references
 ```
 
-**Rules:**
-- Use the imperative mood in the description: "add", not "added" or "adds"
-- Do not capitalise the first letter of the description
-- Do not end the description with a period
-- Keep the subject line under 72 characters
-- Use the commit body (blank line after subject) for additional context when needed
+Rules:
 
----
+- Imperative mood — "add", not "added" or "adds".
+- No capital on the first letter of the description, no trailing period.
+- Subject line under 72 characters; use the body for context.
 
-## Development Guidelines
+The `git-conventional-commits` skill generates these.
 
-### Plugin Work (`plugins/`)
+## Before you open a PR
 
-- Files under `plugins/` are bind-mounted — changes are reflected in the running
-  container immediately (no restart for view/asset changes).
-- After adding a `db/migrate/` file, always run:
-  ```bash
-  make migrate
-  ```
-- After editing `init.rb` or any Ruby file that changes class loading, run:
-  ```bash
-  make restart
-  ```
-- For controllers, models, or hooks: follow the patterns in the
-  `redmine-plugin-developer` skill (`.agents/skills/redmine-plugin-developer/`).
-- Use `make shell` to open a container shell for debugging or running rake tasks
-  manually.
+- `make test` passes, if `e2e/` has tests and you touched UI, controllers or migrations.
+- Infrastructure changes are tested in **both** `make start` and `make start-test` —
+  the local override and the standalone test stack diverge, and a change can work in one
+  and break the other.
+- `Makefile` changes keep `make help` correct.
+- New environment variables are added to `.env.example` **and**
+  [configuration](docs/references/configuration.md). Never commit `.env`.
+- Documentation changes pass the bundle validator — the pre-commit hook runs it, and the
+  `okf-docs` skill explains the layout.
 
-### Theme Work (`themes/`)
+## Pull requests
 
-- Files under `themes/` are bind-mounted — CSS and JS changes are reflected after a
-  browser hard-refresh (Ctrl+Shift+R).
-- No asset compilation step is needed. Propshaft serves files directly.
-- For CSS custom property patterns and `theme.js` conventions, refer to the
-  `redmine-theme-developer` skill (`.agents/skills/redmine-theme-developer/`).
-- After UI changes, validate with:
-  ```bash
-  make test
-  ```
+- One concern per PR.
+- Say what changed and why, not what the diff already shows.
+- Reference related issues.
+- For anything user-visible, give a short manual verification step — "Navigate to the
+  Issues list; the new column should appear".
 
-### Infrastructure and Tooling
+## Setup
 
-- Changes to `docker-compose*.yml` or `Dockerfile` should be tested in both local
-  mode (`make start`) and test mode (`make start-test`) before submitting.
-- Changes to `Makefile` should be tested with `make help` to verify the help output
-  remains correct.
-- Never commit `.env` — it is git-ignored. Only update `.env.example` when new
-  variables are introduced.
-
----
-
-## Testing
-
-```bash
-make test        # Start ephemeral test environment + run all Playwright e2e tests
-make start-test  # Start test environment only (for interactive manual testing)
-make stop-test   # Stop and discard ephemeral test environment
-```
-
-- Tests live in `e2e/` and use Playwright.
-- The test environment runs on `http://localhost:${TEST_REDMINE_PORT:-4001}`.
-- Test data is fully ephemeral (PostgreSQL on `tmpfs`) — each `make start-test` starts
-  clean.
-- If e2e tests exist in `e2e/`, ensure `make test` passes before submitting any PR that touches UI, controllers, or migrations.
-
----
-
-## Pull Request Guidelines
-
-- Keep PRs focused. One concern per PR.
-- Reference related issues in the PR description where applicable.
-- If e2e tests exist in `e2e/`, ensure `make test` passes before requesting review.
-- Add a short description of what was changed and why — not just what the diff shows.
-- For plugin or theme PRs, include a brief note on how to manually verify the change
-  (e.g., "Navigate to Issues list — the new Pipeline column should appear").
-
----
-
-## Local Setup Reminder
-
-```bash
-cp .env.example .env   # Configure your environment
-make setup             # First-time onboarding (build, start, migrate, seed)
-make start             # Subsequent starts
-make references        # Initialize Redmine source reference (optional, for IDE/AI use)
-```
-
-See [README.md](README.md) for full documentation.
+See [first-run-setup](docs/runbooks/first-run-setup.md), or the quick start in
+[README.md](README.md).

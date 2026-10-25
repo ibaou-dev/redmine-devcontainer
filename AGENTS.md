@@ -1,168 +1,83 @@
-# Redmine Development Guidelines
+# Development Guidelines
 
-This document outlines the approach for developing in this Redmine environment.
+The working contract for agents and humans in this workspace. Procedures live in
+[`docs/`](docs/index.md); this page is the part you should know before touching code.
 
-## Environment Overview
+## The model, in one paragraph
 
-- **Version:** Redmine 6.x (see `REDMINE_VERSION` in `.env` — default 6.1.2)
-- **Stack:** Rails 7.2, Ruby 3.2+, PostgreSQL 14, Docker
-- **Base Directory (in container):** `/usr/src/redmine`
-- **Development Workflow:**
-    - This devcontainer is the **stable workspace root** (Docker, Make, and the AI skills
-      via `.claude/skills` → `.agents/skills`). **Plugins live in `plugins/<name>`**
-      (git-ignored) and are bind-mounted in. Run the agent/editor session from the
-      **devcontainer root** so skills auto-trigger for the attached plugin.
-    - `themes/` and `plugins/` directories are bind-mounted into the container.
-    - Changes made locally are reflected immediately (no restart needed for CSS/views).
-    - Ruby/config changes may require `make restart`.
-- **Reference Code:** Redmine source at `.references/redmine` (local-only, initialize with `make references`).
+This repository is the **workspace** — Docker, Make, skills, Redmine source reference.
+Your plugin lives in `plugins/<name>`, is bind-mounted into the container, keeps its own
+git repository and remotes, and is git-ignored here. Commit and push from *inside*
+`plugins/<name>`. Run the agent session from this directory so skills trigger. Full
+reasoning: [workspace-model](docs/concepts/workspace-model.md).
 
-## Starting the Environment
+## Environment
 
-```bash
-make setup       # First time: full setup including build, migrate, seed
-make start       # Subsequent starts (no Traefik required)
-make start-test  # Ephemeral environment for tests/CI
-make start-traefik  # With Traefik (requires external networks)
-```
+| | |
+|---|---|
+| Redmine | 6.x — `REDMINE_VERSION` in `.env`, default 6.1.2 |
+| Stack | Rails 7.2, Ruby 3.2+, PostgreSQL 14, Docker |
+| Base directory in container | `/usr/src/redmine` |
+| Redmine source reference | `.references/redmine` — `make references` |
 
-## Special Skills
+Bind-mounted changes apply immediately. Views, CSS and JS need no restart; CSS and JS need
+a browser hard-refresh. Ruby and config changes need `make restart`. New migrations need
+`make migrate`.
 
-For specialized development tasks, use these local skills (in `.agents/skills/`):
+## The rule that breaks production
 
-### Core Development Skills
+**Never call `l()`, `I18n.t`, or touch the database at module or class-body load time.**
 
-- **`redmine-plugin-developer`** — Expert Redmine 6.x plugin developer. Covers `init.rb` registration, hook system, monkey patching, `acts_as_*` model patterns, controller auth patterns (`require_admin`, `accept_api_auth`), migrations, testing, i18n, and Propshaft assets. **Auto-triggers for any file in `plugins/`**.
-  Reference files: `init-and-registration`, `hooks-and-patches`, `models-and-migrations`, `controllers-and-views`, `testing`, `assets-and-i18n`.
+Development and test do not eager-load, so a load-time call passes every local check and
+then crash-loops Redmine in production. Defer it into a method.
 
-- **`redmine-theme-developer`** — Expert in Redmine 6.x theme development. Covers Propshaft asset pipeline, CSS custom properties, `theme.js` DOM patterns, base stylesheet override approach. **Auto-triggers for any file in `themes/`**.
-
-- **`redmine-cli`** — Manage Redmine issues via REST API. Python CLI at `.agents/skills/redmine-cli/scripts/redmine_cli.py`. Configuration in `.red/config.json` (git-ignored).
-
-### Infrastructure Skills
-
-- **`docker-expert`** — Docker and Docker Compose expertise. Use when modifying `Dockerfile`, `docker-compose*.yml`, or troubleshooting container issues.
-
-- **`git-workflow`** — Git workflow, Conventional Commits, branching strategy. Use when creating branches, writing commit messages, or setting up CONTRIBUTING.md.
-
-- **`git-conventional-commits`** — Structured commit message generation with Conventional Commits spec. Auto-detects project issue tracker format.
-
-### Agent/Skill Management
-
-- **`skill-creator`** — Create and improve agent skills. Targets Claude Code skills (`.agents/skills/<name>/SKILL.md`). Includes evaluation framework.
-
-## Reference Paths
-
-### Plugin Development
-- **Core extension points:** `.references/redmine/lib/redmine/` — plugin, hook, acts_as modules
-- **Available view hooks:** Search `.references/redmine/app/views/` for `call_hook`
-- **Test fixtures:** `.references/redmine/test/fixtures/`
-
-### Theme Development
-- **Core Stylesheets:** `.references/redmine/app/assets/stylesheets/application.css`
-- **Responsive:** `.references/redmine/app/assets/stylesheets/responsive.css`
-- **Official themes:** `.references/redmine/app/assets/themes/`
-
-## Scaffolding New Plugins and Themes
+Catch it in CI with a boot check:
 
 ```bash
-make scaffold-plugin    # Interactive: prompts for name, author, description
-make scaffold-theme     # Interactive: prompts for name and options
+bundle exec rails runner "Rails.application.eager_load!"
 ```
 
-Or use the AI skills directly — just describe what you want and the agent will
-scaffold the correct structure for your Redmine version.
+See [plugin-cicd](docs/runbooks/plugin-cicd.md).
 
-## Attaching an Existing Plugin
+## Implementation workflow
 
-To work on a plugin that already has its own git repository, attach it into `plugins/`
-instead of scaffolding. A **local** repo is attached as a git **worktree** (no second
-copy; shares the source repo's `.git` and remotes), a **remote** URL is cloned.
+1. Read `.references/redmine` to find the real hook, method or pattern — do not guess at
+   core behaviour. Paths are listed in [agent-skills](docs/references/agent-skills.md).
+2. Let the skills do their job: `redmine-plugin-developer` under `plugins/`,
+   `redmine-theme-developer` under `themes/`.
+3. `make migrate` after adding a migration; `make restart` after Ruby or config changes.
+4. Verify against the running instance on `REDMINE_PORT`.
+5. Check nothing you added runs at load time.
+
+## Testing
 
 ```bash
-make attach-plugin SRC=../redmine_my_plugin                    # worktree, branch wt/<name>
-make attach-plugin SRC=../redmine_my_plugin REF=feature/x      # worktree on a branch
-make attach-plugin SRC=https://git.example.com/me/plugin.git   # clone
-make detach-plugin NAME=redmine_my_plugin                      # remove (worktree-aware)
+make test         # ephemeral stack + Playwright e2e
+make start-test   # the stack alone, for manual work
+make stop-test    # stop and discard
 ```
 
-`attach-plugin` rebuilds the image (to install the plugin's `PluginGemfile` gems) and runs
-plugin migrations. Commit/branch/push from **inside `plugins/<name>`** — it is the real
-plugin repo; the devcontainer never tracks it (`plugins/*` is git-ignored). Running the
-plugin's tests needs the `test` bundle group, which this dev image omits — give the plugin
-a self-contained CI image (official `redmine:` base + full `bundle install`).
+The test stack is fully ephemeral — PostgreSQL on `tmpfs`, clean on every start.
 
-## CI/CD
+**A plugin's own Ruby test suite will not run in the dev container.** That image omits the
+Ruby `test` bundle group. Give the plugin a self-contained CI image instead; this is
+deliberate, and the reasoning is in [workspace-model](docs/concepts/workspace-model.md).
 
-Each plugin ships its own CI/CD config and follows a shared pipeline (test image → test →
-SonarQube branch/PR analysis → quality gate → PR → merge → package → tag → release). See
-**[docs/CICD.md](docs/CICD.md)** for the layout, realistic per-plugin quality gates, and the
-gotchas — in particular: **add an eager-load boot check**
-(`bundle exec rails runner "Rails.application.eager_load!"`) so load-time errors fail CI
-instead of crash-looping production, and remember the dev image omits the `test` bundle group.
+## Common tasks
 
-## Implementation Workflow
+| Task | Where |
+|---|---|
+| Set up a fresh clone | [first-run-setup](docs/runbooks/first-run-setup.md) |
+| Attach or detach a plugin or theme | [attach-a-plugin](docs/runbooks/attach-a-plugin.md) |
+| Work on several branches at once | [parallel-worktrees](docs/runbooks/parallel-worktrees.md) |
+| Give a plugin a pipeline | [plugin-cicd](docs/runbooks/plugin-cicd.md) |
+| Look up a variable or target | [configuration](docs/references/configuration.md), [make-targets](docs/references/make-targets.md) |
 
-When working on new features or changes:
+Scaffolding for something genuinely new: `make scaffold-plugin`, `make scaffold-theme`.
+For anything that already exists, attach it instead.
 
-1. Check `.references/redmine` to understand Redmine's core logic and available hooks.
-2. Use the `redmine-plugin-developer` skill for plugin work, `redmine-theme-developer` for theme work.
-3. Run `make migrate` after adding any new migration files.
-4. Test changes against the live environment at `http://localhost:${REDMINE_PORT:-4000}`.
-5. Never translate (`l()`/`I18n`) or hit the DB at module/class-body load time — it crashes
-   eager-load in production (see the `redmine-plugin-developer` skill → *Load-time safety*).
+## Documentation
 
-## Git Worktrees
-
-Worktrees allow simultaneous work on multiple branches, each with an isolated Docker stack.
-
-**Standard location: sibling directories next to the main repo.**
-
-```
-/path/to/workspace/
-├── redmine-devcontainer/   ← main repo
-├── redmine-feature-foo/    ← worktree
-└── redmine-fix-bar/        ← worktree
-```
-
-### Create
-```bash
-# From the main repo:
-make worktree BRANCH=feature/my-feature PORT=4010
-cd ../redmine-feature-my-feature
-make start        # Starts on port 4010, isolated from all other stacks
-make migrate      # After adding new migrations
-```
-
-`PORT` is optional (default 4010). Each worktree gets its own `COMPOSE_PROJECT_NAME`, `REDMINE_PORT`, and `TEST_REDMINE_PORT` in its `.env` — Docker prefixes all container, network, and volume names with it so nothing conflicts.
-
-### Work
-```bash
-make restart      # After Ruby/config changes
-make test         # e2e tests on isolated TEST_REDMINE_PORT
-```
-
-### Commit, push, merge
-```bash
-# Commit and push from within the worktree as normal:
-git add ... && git commit -m "feat(...): ..."
-git push -u origin feature/my-feature
-
-# Merge back from the main repo:
-cd ../redmine-devcontainer
-git merge feature/my-feature --no-ff
-```
-
-### Remove
-```bash
-# From the main repo:
-make worktree-remove BRANCH=feature/my-feature
-```
-
-## Docker Compose Modes
-
-| Command | Compose Files | Use Case |
-|---------|--------------|----------|
-| `make start` | `docker-compose.yml` + `docker-compose.local.yml` | Daily development (no Traefik) |
-| `make start-traefik` | `docker-compose.yml` | Production-like with Traefik routing |
-| `make start-test` | `docker-compose.test.yml` | CI, tests, DevContainers |
+`docs/` is an OKF v0.2 bundle validated by a pre-commit hook. Use the `okf-docs` skill to
+add to it — the layout, frontmatter and log format are all enforced, and a new file in the
+wrong directory fails the commit.

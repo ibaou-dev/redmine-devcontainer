@@ -1,39 +1,29 @@
 # Claude Code Configuration
 
-This is a Redmine plugin/theme development template. See the links below for key context.
+A Redmine plugin and theme development workspace. Your plugin is bind-mounted into
+`plugins/<name>` and keeps its own git repository; this repository never tracks it.
 
-## Key Files
+Read [AGENTS.md](AGENTS.md) first — it is the working contract. Everything else is in the
+documentation bundle at [docs/index.md](docs/index.md).
 
-- `AGENTS.md` — development guidelines, skill inventory, reference paths, worktree workflow
-- `CONTRIBUTING.md` — branch naming, commit conventions, PR workflow
-- `docs/CICD.md` — recommended per-plugin CI/CD pipeline (Jenkins/SonarQube/coverage/release) + gotchas
-- `.agents/skills/` — domain-specific AI skills (auto-trigger based on context)
-- `.env.example` → `.env` — environment configuration (ports, version, passwords)
-- `.claude/settings.local.json.example` → `.claude/settings.local.json` — Claude Code settings (created by `make setup`)
+## Orientation
 
-## Quick Context
+| Need | Go to |
+|---|---|
+| Why the workspace is shaped this way | [docs/concepts/workspace-model.md](docs/concepts/workspace-model.md) |
+| Get it running | [docs/runbooks/first-run-setup.md](docs/runbooks/first-run-setup.md) |
+| Bring a plugin in | [docs/runbooks/attach-a-plugin.md](docs/runbooks/attach-a-plugin.md) |
+| Several branches at once | [docs/runbooks/parallel-worktrees.md](docs/runbooks/parallel-worktrees.md) |
+| Plugin pipelines | [docs/runbooks/plugin-cicd.md](docs/runbooks/plugin-cicd.md) |
+| Env vars, Compose modes, limits | [docs/references/configuration.md](docs/references/configuration.md) |
+| Every Make target | [docs/references/make-targets.md](docs/references/make-targets.md) |
+| Skills and Redmine source paths | [docs/references/agent-skills.md](docs/references/agent-skills.md) |
 
-| Topic | Detail |
-|-------|--------|
-| Redmine version | `REDMINE_VERSION` in `.env` (default 6.1.2) |
-| Plugins | `plugins/` — bind-mounted, changes reflect immediately (git-ignored) |
-| Themes | `themes/` — bind-mounted, hard-refresh after CSS/JS changes (git-ignored) |
-| Attach a plugin/theme | `make attach-plugin SRC=<path\|url>` (worktree for local, clone for remote) |
-| Reference source | `.references/redmine/` — initialize with `make references` |
-| Commands | `make help` for full list |
-| Credentials | admin / admin — change password on first login |
+## Session setup
 
-> **Workspace model:** open your Claude/editor session at this devcontainer root (skills
-> live in `.claude/skills` → `.agents/skills`); your plugin lives in `plugins/<name>`.
+Open the session at **this directory**. Skills live in `.agents/skills/` and trigger on
+paths such as `plugins/` and `themes/`; a session opened inside `plugins/<name>` loads
+none of them.
 
-## Skills Available
-
-| Skill | Auto-triggers on |
-|-------|-----------------|
-| `redmine-plugin-developer` | Files in `plugins/`, `init.rb`, hooks, migrations |
-| `redmine-theme-developer` | Files in `themes/`, CSS, `theme.js` |
-| `redmine-cli` | Redmine API, issue management, `.red/config.json` |
-| `docker-expert` | Dockerfiles, compose files, container issues |
-| `git-workflow` | Git commits, branching, CONTRIBUTING.md |
-| `git-conventional-commits` | Commit messages, changelog |
-| `skill-creator` | Creating/improving agent skills |
+`make setup` creates `.claude/settings.local.json` from the tracked
+`.claude/settings.local.json.example`.

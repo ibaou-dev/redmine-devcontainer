@@ -33,3 +33,6 @@ plugins/*
 # Project-local: themes are attached the same way as plugins; never tracked here
 themes/*
 !themes/.gitkeep
+
+# Local simulation harness — references internal infrastructure, never publish.
+sim/
